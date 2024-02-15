@@ -6,8 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets"
 	"github.com/libopenstorage/secrets"
 	"github.com/portworx/sched-ops/task"
 )
@@ -21,6 +20,10 @@ const (
 	AzureClientID = "AZURE_CLIENT_ID"
 	// AzureClientSecret of service principal account
 	AzureClientSecret = "AZURE_CLIENT_SECRET"
+	// AzureClientCertPath is path of the client certificate
+	AzureClientCertPath = "AZURE_CLIENT_CERT_PATH"
+	// AzureClientCertPassword is the password of the private key
+	AzureClientCertPassword = "AZURE_CIENT_CERT_PASSWORD"
 	// AzureEnviornment to connect
 	AzureEnviornment = "AZURE_ENVIRONMENT"
 	// AzureVaultURI of azure key vault
@@ -37,6 +40,7 @@ var (
 	ErrAzureTenantIDNotSet    = errors.New("AZURE_TENANT_ID not set.")
 	ErrAzureClientIDNotSet    = errors.New("AZURE_CLIENT_ID not set.")
 	ErrAzureSecretIDNotSet    = errors.New("AZURE_SECRET_ID not set.")
+	ErrAzureAuthMedhodNotSet  = errors.New("AZURE_SECRET_ID or AZURE_CLIENT_CERT_PATH not set")
 	ErrAzureVaultURLNotSet    = errors.New("AZURE_VAULT_URL not set.")
 	ErrAzureEnvironmentNotset = errors.New("AZURE_ENVIRONMENT not set.")
 	ErrAzureConfigMissing     = errors.New("AzureConfig is not provided")
@@ -45,7 +49,7 @@ var (
 )
 
 type azureSecrets struct {
-	kv      keyvault.BaseClient
+	kv      azsecrets.Client
 	baseURL string
 }
 
@@ -62,9 +66,9 @@ func New(
 		return nil, ErrAzureClientIDNotSet
 	}
 	secretID := getAzureKVParams(secretConfig, AzureClientSecret)
-	if secretID == "" {
-		return nil, ErrAzureSecretIDNotSet
-	}
+	clientCertPath := getAzureKVParams(secretConfig, AzureClientCertPath)
+	clientCertPassword := getAzureKVParams(secretConfig, AzureClientCertPassword)
+
 	envName := getAzureKVParams(secretConfig, AzureEnviornment)
 	if envName == "" {
 		// we set back to default AzurePublicCloud
@@ -75,13 +79,24 @@ func New(
 		return nil, ErrAzureVaultURLNotSet
 	}
 
-	client, err := getAzureVaultClient(clientID, secretID, tenantID, envName)
-	if err != nil {
-		return nil, err
+	var client *azsecrets.Client
+	var err error
+	if secretID != "" {
+		client, err = getAzureVaultClient(clientID, secretID, tenantID, vaultURL)
+		if err != nil {
+			return nil, err
+		}
+	} else if clientCertPath != "" {
+		client, err = getAzureVaultClientWithCert(clientID, tenantID, vaultURL, clientCertPath, clientCertPassword)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, ErrAzureAuthMedhodNotSet
 	}
 
 	return &azureSecrets{
-		kv:      client,
+		kv:      *client,
 		baseURL: vaultURL,
 	}, nil
 }
@@ -98,7 +113,8 @@ func (az *azureSecrets) GetSecret(
 	}
 
 	t := func() (interface{}, bool, error) {
-		secretResp, err := az.kv.GetSecret(ctx, az.baseURL, secretID, "")
+		// passing empty version to always get the latest version of the secret.
+		secretResp, err := az.kv.GetSecret(ctx, secretID, "", nil)
 		if err != nil {
 			return nil, true, err
 		}
@@ -109,7 +125,7 @@ func (az *azureSecrets) GetSecret(
 		return nil, secrets.NoVersion, err
 	}
 
-	secretResp, ok := resp.(keyvault.SecretBundle)
+	secretResp, ok := resp.(azsecrets.SecretBundle)
 	if !ok || secretResp.Value == nil {
 		return nil, secrets.NoVersion, ErrInvalidSecretResp
 	}
@@ -133,7 +149,7 @@ func (az *azureSecrets) PutSecret(
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
-	var secretResp keyvault.SecretBundle
+	var secretResp azsecrets.SecretBundle
 	if secretName == "" {
 		return secrets.NoVersion, secrets.ErrEmptySecretId
 	}
@@ -146,10 +162,10 @@ func (az *azureSecrets) PutSecret(
 		return secrets.NoVersion, err
 	}
 
+	valueStr := string(value)
 	t := func() (interface{}, bool, error) {
-		secretResp, err = az.kv.SetSecret(ctx, az.baseURL, secretName, keyvault.SecretSetParameters{
-			Value: to.StringPtr(string(value)),
-		})
+		params := azsecrets.SetSecretParameters{Value: &valueStr}
+		az.kv.SetSecret(ctx, secretName, params, nil)
 		if err != nil {
 			return nil, true, err
 		}
@@ -169,7 +185,7 @@ func (az *azureSecrets) DeleteSecret(
 	if secretName == "" {
 		return secrets.ErrEmptySecretId
 	}
-	_, err := az.kv.DeleteSecret(ctx, az.baseURL, secretName)
+	_, err := az.kv.DeleteSecret(ctx, secretName, nil)
 
 	return err
 }

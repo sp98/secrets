@@ -18,12 +18,15 @@ require (
 	github.com/portworx/kvdb v0.0.0-20200929023115-b312c7519467
 	github.com/portworx/sched-ops v1.20.4-rc1
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.4
 	google.golang.org/api v0.83.0
 	k8s.io/client-go v12.0.0+incompatible
 )
 
 require (
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.5.1
+	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets v0.12.0
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions v1.3.0
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
@@ -31,8 +34,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-test/deep v1.0.8 // indirect
-	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
 	github.com/hashicorp/hcl v1.0.1-vault-5 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
