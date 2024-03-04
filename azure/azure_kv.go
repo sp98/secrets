@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets"
@@ -116,6 +117,8 @@ func (az *azureSecrets) GetSecret(
 		// passing empty version to always get the latest version of the secret.
 		secretResp, err := az.kv.GetSecret(ctx, secretID, "", nil)
 		if err != nil {
+			fmt.Printf("SP erro 1 - %+v\n, ", err)
+			fmt.Printf("SP erro 2 - %+v\n, ", err.Error())
 			return nil, true, err
 		}
 		return secretResp, false, nil
@@ -125,7 +128,11 @@ func (az *azureSecrets) GetSecret(
 		return nil, secrets.NoVersion, err
 	}
 
+	fmt.Printf("SP - resp 1 - %+v\n", resp)
+	fmt.Printf("SP - resp 2 - %T\n", resp)
 	secretResp, ok := resp.(azsecrets.SecretBundle)
+	fmt.Printf("SP - resp - %+v\n", secretResp)
+	fmt.Printf("SP - ok or not - %+v\n", ok)
 	if !ok || secretResp.Value == nil {
 		return nil, secrets.NoVersion, ErrInvalidSecretResp
 	}
