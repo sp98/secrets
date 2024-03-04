@@ -48,7 +48,6 @@ var (
 	ErrAzureConfigMissing     = errors.New("AzureConfig is not provided")
 	ErrAzureAuthentication    = errors.New("Azure authentication failed")
 	ErrInvalidSecretResp      = errors.New("Secret Data received from secrets provider is either empty/invalid")
-	ErrSecretNotFound         = errors.New("Secret not found")
 )
 
 type azureSecrets struct {
@@ -120,7 +119,7 @@ func (az *azureSecrets) GetSecret(
 		secretResp, err := az.kv.GetSecret(ctx, secretID, "", nil)
 		if err != nil {
 			if strings.Contains(err.Error(), "SecretNotFound") {
-				return nil, false, ErrSecretNotFound
+				return nil, false, secrets.ErrSecretNotFound
 			}
 			return nil, true, err
 		}
