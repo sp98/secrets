@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets"
@@ -47,6 +48,7 @@ var (
 	ErrAzureConfigMissing     = errors.New("AzureConfig is not provided")
 	ErrAzureAuthentication    = errors.New("Azure authentication failed")
 	ErrInvalidSecretResp      = errors.New("Secret Data received from secrets provider is either empty/invalid")
+	ErrSecretNotFound         = errors.New("Secret not found")
 )
 
 type azureSecrets struct {
@@ -117,8 +119,9 @@ func (az *azureSecrets) GetSecret(
 		// passing empty version to always get the latest version of the secret.
 		secretResp, err := az.kv.GetSecret(ctx, secretID, "", nil)
 		if err != nil {
-			fmt.Printf("SP erro 1 - %+v\n, ", err)
-			fmt.Printf("SP erro 2 - %+v\n, ", err.Error())
+			if strings.Contains(err.Error(), "SecretNotFound") {
+				return nil, false, ErrSecretNotFound
+			}
 			return nil, true, err
 		}
 		return secretResp, false, nil
