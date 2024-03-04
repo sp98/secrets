@@ -130,7 +130,7 @@ func (az *azureSecrets) GetSecret(
 
 	fmt.Printf("SP - resp 1 - %+v\n", resp)
 	fmt.Printf("SP - resp 2 - %T\n", resp)
-	secretResp, ok := resp.(azsecrets.SecretBundle)
+	secretResp, ok := resp.(azsecrets.GetSecretResponse)
 	fmt.Printf("SP - resp - %+v\n", secretResp)
 	fmt.Printf("SP - ok or not - %+v\n", ok)
 	if !ok || secretResp.Value == nil {
